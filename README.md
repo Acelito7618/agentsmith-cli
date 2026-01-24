@@ -33,6 +33,23 @@
 
 ## Installation
 
+### From GitHub (recommended during preview)
+
+```bash
+npm install -g github:shyamsridhar123/agentsmith-cli
+```
+
+### Uninstall
+
+```bash
+npm uninstall -g agentsmith
+
+# Remove generated assets from a repository
+rm -rf .github/skills .github/agents .github/hooks skills-registry.jsonl
+```
+
+### From npm (coming soon)
+
 ```bash
 npm install -g agentsmith
 ```
