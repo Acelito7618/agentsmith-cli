@@ -1,34 +1,35 @@
 ---
 name: asset-validation-rules
-description: Validate generated assets for presence, structure, and correctness with actionable errors/warnings.
+description: Validate generated skills, agents, hooks, and registry entries with actionable errors/warnings.
 ---
 
 # Asset Validation Rules
 
-Validate generated assets for presence, structure, and correctness with actionable errors/warnings.
+Validate generated skills, agents, hooks, and registry entries with actionable errors/warnings.
 
 ## When to Use
 
 Use this skill when:
 
-- Working with code in `src\commands\validate.ts/`
+- Working with code in `src/commands/validate.ts/`
 - User mentions "validate"
 - User mentions "frontmatter"
-- User mentions "agent.yaml"
+- User mentions "yaml"
 - User mentions "hooks"
 - User mentions "registry"
 
 ## Patterns
 
-- SKILL.md YAML frontmatter presence and fields
-- agent.yaml name/description/root presence and skill references
-- hook event validity and commands array
-- registry JSONL parse and per-line validation
+- SKILL.md frontmatter checks for name/description
+- agent.yaml required fields and skill existence
+- hook event validation against whitelist
+- registry JSON line parsing with required fields
+- summary with errors/warnings and exit code
 
 ## Examples
 
 ```
-if (!content.startsWith("---")) result.errors.push(`${dir.name}/SKILL.md: Missing YAML frontmatter`);
+await validateCommand('.', { verbose: true });
 ```
 
 ## Category

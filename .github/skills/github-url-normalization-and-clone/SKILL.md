@@ -1,34 +1,34 @@
 ---
 name: github-url-normalization-and-clone
-description: Normalize GitHub URLs, perform shallow clone to a temp directory, and ensure cleanup.
+description: Normalize GitHub URLs and perform shallow clones to a temp directory with cleanup.
 ---
 
 # Github Url Normalization And Clone
 
-Normalize GitHub URLs, perform shallow clone to a temp directory, and ensure cleanup.
+Normalize GitHub URLs and perform shallow clones to a temp directory with cleanup.
 
 ## When to Use
 
 Use this skill when:
 
-- Working with code in `src\utils/`
+- Working with code in `src/utils/git.ts/`
+- User mentions "git"
 - User mentions "clone"
-- User mentions "github"
+- User mentions "github url"
 - User mentions "normalize"
-- User mentions "temp dir"
-- User mentions "cleanup"
+- User mentions "shallow"
 
 ## Patterns
 
-- URL normalization (https/git@/github.com/ forms) and .git suffix removal
-- temporary directory creation with crypto hash
-- simple-git shallow clone with --depth 1
-- best-effort cleanup via fs.rm recursive force
+- GitHub URL detection and normalization
+- temp dir naming with random suffix
+- shallow clone with --depth 1
+- cleanup via fs.rm on completion
 
 ## Examples
 
 ```
-await git.clone(normalizedUrl, tempDir, ["--depth", "1"]);
+const { path, cleanup } = await cloneRepo(url); await cleanup();
 ```
 
 ## Category

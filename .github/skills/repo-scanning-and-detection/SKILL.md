@@ -1,38 +1,38 @@
 ---
 name: repo-scanning-and-detection
-description: Scan repositories, ignore noise, detect language/framework/config/tests, and identify source directories.
+description: Enumerate files, detect language/framework, and identify config/test/source directories.
 ---
 
 # Repo Scanning And Detection
 
-Scan repositories, ignore noise, detect language/framework/config/tests, and identify source directories.
+Enumerate files, detect language/framework, and identify config/test/source directories.
 
 ## When to Use
 
 Use this skill when:
 
-- Working with code in `src\scanner/`
+- Working with code in `src/scanner/index.ts/`
 - User mentions "scan"
 - User mentions "glob"
 - User mentions "language"
 - User mentions "framework"
 - User mentions "config"
 - User mentions "tests"
-- User mentions "source dirs"
 
 ## Patterns
 
-- glob-based enumeration with ignore patterns
-- language detection via extension counts with tsconfig override
-- framework detection via package.json dependency inspection
-- config/test file detection and source directory heuristics
+- glob-based enumeration with ignore filters
+- language detection via extension counts and tsconfig override
+- framework detection via package.json dependencies
+- config and test file heuristics
+- source directory inference from common roots
 
 ## Examples
 
 ```
-const allFiles = await glob("**/*", { cwd: this.rootPath, nodir: true, ignore: IGNORE_PATTERNS });
+const scanner = new Scanner(rootPath, verbose); const result = await scanner.scan();
 ```
 
 ## Category
 
-**patterns** - Common code patterns and conventions
+**architecture** - Structural patterns and system design

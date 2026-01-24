@@ -1,34 +1,35 @@
 ---
 name: hook-lifecycle-execution
-description: Execute YAML-defined lifecycle hooks with optional conditions and structured output.
+description: Load and execute YAML-defined lifecycle hooks with optional conditions and controlled timeouts.
 ---
 
 # Hook Lifecycle Execution
 
-Execute YAML-defined lifecycle hooks with optional conditions and structured output.
+Load and execute YAML-defined lifecycle hooks with optional conditions and controlled timeouts.
 
 ## When to Use
 
 Use this skill when:
 
-- Working with code in `src\hooks/`
-- User mentions "hook"
+- Working with code in `src/hooks/index.ts/`
+- User mentions "hooks"
 - User mentions "pre-commit"
-- User mentions "pre-push"
 - User mentions "post-generate"
-- User mentions "yaml hooks"
+- User mentions "condition"
+- User mentions "timeout"
 
 ## Patterns
 
-- events: pre-commit, post-commit, pre-push, pre-analyze, post-generate
-- condition support: file: and command:
-- execSync with timeouts and verbose logging
-- stop-on-first-failure semantics
+- event-scoped hook discovery under .github/hooks
+- execSync command execution with timeout
+- file/command condition evaluation
+- verbose output and early failure stop
+- per-hook success/error aggregation
 
 ## Examples
 
 ```
-const hookDef = yaml.parse(content) as HookDefinition;
+const runner = new HookRunner(rootPath, verbose); await runner.execute('post-generate');
 ```
 
 ## Category

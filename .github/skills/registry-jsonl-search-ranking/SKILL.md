@@ -1,34 +1,34 @@
 ---
 name: registry-jsonl-search-ranking
-description: Build a JSONL registry and search it with relevance scoring and type filtering.
+description: Build and query a JSONL registry with relevance scoring, type filtering, and trigger matching.
 ---
 
 # Registry Jsonl Search Ranking
 
-Build a JSONL registry and search it with relevance scoring and type filtering.
+Build and query a JSONL registry with relevance scoring, type filtering, and trigger matching.
 
 ## When to Use
 
 Use this skill when:
 
-- Working with code in `src\registry/`
+- Working with code in `src/registry/index.ts/`
 - User mentions "registry"
 - User mentions "search"
-- User mentions "JSONL"
+- User mentions "jsonl"
+- User mentions "score"
 - User mentions "index"
-- User mentions "rank"
 
 ## Patterns
 
-- JSONL entries for skills and agents
-- scoring by name, description, triggers, and category
-- type filtering and boosting for root agents
-- safe IO with fallback on missing registry
+- append-only JSONL entries for skills and agents
+- scored search over name/description/triggers/category
+- type filter (skill|agent) and result limiting
+- list/get helpers for registry introspection
 
 ## Examples
 
 ```
-if (entry.name.toLowerCase() === queryLower) score += 100;
+const registry = new Registry(cwd); const results = await registry.search(query, { type, limit });
 ```
 
 ## Category

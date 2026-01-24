@@ -10,6 +10,7 @@ import { Generator } from "../generator/index.js";
 import { Registry } from "../registry/index.js";
 import { HookRunner } from "../hooks/index.js";
 import { resolveInput, isGitHubUrl, getRepoName } from "../utils/git.js";
+import { detectLicense, formatLicenseStatus } from "../utils/license.js";
 
 interface AssimilateOptions {
   dryRun?: boolean;
@@ -63,6 +64,39 @@ export async function assimilateCommand(
           console.log(chalk.gray(`  ├── Sub-agent: ${agent.name}`));
         }
       }
+    }
+
+    // Phase 2.5: License check
+    console.log(chalk.green("\n[LICENSE]"), "Checking repository license...");
+    const license = await detectLicense(resolved.path);
+    
+    if (options.verbose) {
+      console.log(chalk.gray(`  └── ${formatLicenseStatus(license)}${license.file ? ` (from ${license.file})` : ""}`));
+    }
+
+    // Block generation for non-permissive licenses (unless dry-run)
+    if (!license.permissive && !options.dryRun) {
+      console.log(chalk.red("\n[BLOCKED]"), "Cannot assimilate repository.");
+      
+      if (!license.detected) {
+        console.log(chalk.red("  No license file found."));
+        console.log(chalk.gray("  Add a LICENSE file with a permissive license (MIT, Apache-2.0, GPL, BSD, etc.)"));
+      } else {
+        console.log(chalk.red(`  License "${license.name}" is not permissive.`));
+        console.log(chalk.gray("  Only repositories with permissive open-source licenses can be assimilated."));
+      }
+      
+      console.log(chalk.gray("\n  Tip: Use --dry-run to preview what would be generated without license restrictions."));
+      console.log(chalk.gray("  Supported licenses: MIT, Apache-2.0, GPL, LGPL, BSD, ISC, MPL-2.0, Unlicense, CC0\n"));
+      
+      process.exitCode = 1;
+      return;
+    }
+
+    if (!license.permissive && options.dryRun) {
+      console.log(chalk.yellow("  ⚠ License not permissive - generation would be blocked without --dry-run"));
+    } else if (license.permissive) {
+      console.log(chalk.green(`  ✓ ${license.name} - permissive license detected`));
     }
 
     // Determine output path

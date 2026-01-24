@@ -10,6 +10,11 @@
 >
 > *— Agent Smith*
 
+> [!WARNING]
+> **Experimental Software** — This project is under active development. APIs and generated assets may change without notice. Use at your own risk.
+>
+> **Respect Copyright** — Agent Smith analyzes repositories to extract patterns. Always ensure you have the right to analyze and use code from any repository you assimilate. Do not use this tool to extract or redistribute proprietary code without permission.
+
 <p align="center">
   <img src="public/images/agent-smith.gif" alt="Agent Smith" width="400"/>
 </p>
@@ -24,6 +29,7 @@
 - 🛠️ **Tool Detection** — Discovers build, test, lint, and deploy commands
 - 🪝 **Lifecycle Hooks** — Generates and executes pre-commit, pre-push, and post-generate hooks
 - 📋 **Searchable Registry** — JSONL index for fast skill/agent discovery
+- 🔒 **License Enforcement** — Only assimilates repos with permissive open-source licenses
 
 ## Installation
 
@@ -145,6 +151,9 @@ $ agentsmith assimilate https://github.com/expressjs/express
   ├── lib/router         → routing-patterns
   └── Sub-agents: core, routing, request, response, views, utils
 
+[LICENSE] Checking repository license...
+  ✓ MIT - permissive license detected
+
 [GENERATE] Writing assets...
   ✓ 11 skills
   ✓ 7 agents (1 root + 6 sub-agents)
@@ -177,9 +186,28 @@ Each agent has:
 
 ## Requirements
 
-- Node.js 18+
-- GitHub Copilot subscription
-- Copilot CLI in PATH
+- **Node.js 18+**
+- **GitHub Copilot subscription** — Active subscription required for SDK access
+- **GitHub CLI authenticated** — Run `gh auth login` and complete authentication
+- **Copilot CLI installed and in PATH** — [Installation guide](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli)
+
+The SDK authenticates automatically through the Copilot CLI, which uses your GitHub CLI credentials. No API keys or tokens need to be configured manually.
+
+## License Policy
+
+Agent Smith enforces responsible use by only allowing full assimilation of repositories with permissive open-source licenses:
+
+**Supported licenses:**
+- MIT, ISC, Unlicense, CC0
+- Apache-2.0, MPL-2.0
+- BSD-2-Clause, BSD-3-Clause, 0BSD
+- GPL-2.0, GPL-3.0, LGPL, AGPL
+
+**Blocked:**
+- Repositories without a LICENSE file
+- Proprietary or restrictive licenses
+
+Use `--dry-run` to preview what would be generated for any repository without license restrictions.
 
 ## How It Works
 
