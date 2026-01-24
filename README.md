@@ -1,5 +1,11 @@
 # Agent Smith
 
+[![npm version](https://img.shields.io/npm/v/agentsmith.svg?style=flat-square)](https://www.npmjs.com/package/agentsmith)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![GitHub Copilot](https://img.shields.io/badge/GitHub%20Copilot-SDK-blue?style=flat-square&logo=github)](https://github.com/github/copilot-sdk)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=flat-square&logo=node.js)](https://nodejs.org/)
+
 > *"I'd like to share a revelation that I've had during my time here... You move to an area and you multiply and multiply until every natural resource is consumed."*
 >
 > *— Agent Smith*
@@ -167,6 +173,33 @@ Each agent has:
 MIT — see [LICENSE](LICENSE)
 
 ---
+
+## Contributing
+
+Contributions welcome! Please read our [Philosophy](docs/PHILOSOPHY.md) first to understand the project's vision.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Star History
+
+If this project helps you build smarter AI agents, consider giving it a ⭐!
+
+[![Star History Chart](https://api.star-history.com/svg?repos=shyamsridhar123/agentsmith-cli&type=Date)](https://star-history.com/#shyamsridhar123/agentsmith-cli&Date)
+
+## Related Projects
+
+- [GitHub Copilot SDK](https://github.com/github/copilot-sdk) - The cognitive engine powering Agent Smith
+- [Agent Skills Spec](https://agentskills.io) - The standard for skill definitions
+
+---
+
+<p align="center">
+  <b>Built with 🤖 by developers who watched The Matrix too many times.</b>
+</p>
 
 > *"We are inevitable."*
 >
