@@ -243,7 +243,7 @@ The twelfth truth:
 ## The Inevitable
 
 <p align="center">
-  <img src="../public/images/inevitable.gif" alt="It is... inevitable" width="500"/>
+  <img src="../public/images/oh-agent-smith.gif" alt="It is... inevitable" width="500"/>
 </p>
 
 Smith's catchphrase is "Mr. Anderson." But his philosophy is summed up in one word:
