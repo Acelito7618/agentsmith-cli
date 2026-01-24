@@ -22,7 +22,7 @@
 - 🤖 **Agent Generation** — Creates hierarchical agents with sub-agents for complex domains
 - 📚 **Skill Extraction** — Identifies patterns, conventions, and reusable capabilities
 - 🛠️ **Tool Detection** — Discovers build, test, lint, and deploy commands
-- 🪝 **Lifecycle Hooks** — Generates pre-commit, pre-push, and post-generate hooks
+- 🪝 **Lifecycle Hooks** — Generates and executes pre-commit, pre-push, and post-generate hooks
 - 📋 **Searchable Registry** — JSONL index for fast skill/agent discovery
 
 ## Installation
@@ -103,6 +103,23 @@ Options:
   -t, --type <type>   Filter by: skill or agent
 ```
 
+### `validate [path]`
+
+Validate generated agent assets.
+
+```bash
+agentsmith validate [path] [options]
+
+Options:
+  -v, --verbose       Show detailed validation output
+```
+
+Checks:
+- Skills have valid frontmatter with `name` and `description`
+- Agents have required fields and valid skill references
+- Hooks have valid events and non-empty command lists
+- Registry entries are valid JSON with required fields
+
 ## Example Output
 
 ```
@@ -132,6 +149,9 @@ $ agentsmith assimilate https://github.com/expressjs/express
   ✓ 11 skills
   ✓ 7 agents (1 root + 6 sub-agents)
   ✓ 3 hooks
+
+[HOOKS] Running post-generate hooks...
+  ✓ post-generate-validate
 
 [COMPLETE] Your repository has been assimilated.
 ```
@@ -167,6 +187,7 @@ Each agent has:
 2. **Analyze** — Uses Copilot SDK for semantic analysis and pattern extraction
 3. **Generate** — Writes SKILL.md files, agent.yaml configs, and hooks
 4. **Index** — Builds searchable JSONL registry
+5. **Validate** — Executes post-generate hooks to verify asset integrity
 
 ## License
 

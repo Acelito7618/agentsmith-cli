@@ -10,6 +10,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { assimilateCommand } from "./commands/assimilate.js";
 import { searchCommand } from "./commands/search.js";
+import { validateCommand } from "./commands/validate.js";
 
 const program = new Command();
 
@@ -43,5 +44,12 @@ program
   .option("-l, --limit <number>", "Maximum results to return", "10")
   .option("-t, --type <type>", "Filter by type: skill or agent")
   .action(searchCommand);
+
+program
+  .command("validate")
+  .description("Validate generated agent assets")
+  .argument("[path]", "Path to repository (default: current directory)", ".")
+  .option("-v, --verbose", "Show detailed validation output")
+  .action(validateCommand);
 
 program.parse();

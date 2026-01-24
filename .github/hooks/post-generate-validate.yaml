@@ -8,4 +8,4 @@ description: Validate generated agent assets after generation
 
 # Commands to execute
 commands:
-  - "agentsmith validate"
+  - "node dist/main.js validate"

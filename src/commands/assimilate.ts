@@ -8,6 +8,7 @@ import { Scanner } from "../scanner/index.js";
 import { Analyzer } from "../analyzer/index.js";
 import { Generator } from "../generator/index.js";
 import { Registry } from "../registry/index.js";
+import { HookRunner } from "../hooks/index.js";
 import { resolveInput, isGitHubUrl, getRepoName } from "../utils/git.js";
 
 interface AssimilateOptions {
@@ -86,6 +87,18 @@ export async function assimilateCommand(
     await registry.build(analysisResult.skills, analysisResult.agents);
     const registryIcon = options.dryRun ? chalk.yellow("○") : chalk.green("✓");
     console.log(`  ${registryIcon} skills-registry.jsonl`);
+
+    // Phase 5: Execute post-generate hooks
+    if (!options.dryRun) {
+      const hookRunner = new HookRunner(outputPath, options.verbose);
+      const hookResults = await hookRunner.execute("post-generate");
+      
+      // Check for hook failures
+      const failedHooks = hookResults.filter(r => !r.success);
+      if (failedHooks.length > 0) {
+        console.log(chalk.yellow("\nWarning: Some hooks failed. See output above."));
+      }
+    }
 
     // Summary
     const subAgentCount = analysisResult.agents.filter((a) => a.isSubAgent).length;

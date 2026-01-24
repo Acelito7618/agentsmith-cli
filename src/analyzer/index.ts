@@ -495,7 +495,7 @@ Extract skills, agents (with hierarchy), and tools from this codebase. Return JS
       name: "post-generate-validate",
       event: "post-generate",
       description: "Validate generated agent assets after generation",
-      commands: ["agentsmith validate"],
+      commands: ["node dist/main.js validate"],
     });
 
     return hooks;

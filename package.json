@@ -28,6 +28,7 @@
     "commander": "^12.0.0",
     "glob": "^10.3.0",
     "simple-git": "^3.30.0",
+    "yaml": "^2.8.2",
     "zod": "^3.22.0"
   },
   "devDependencies": {
