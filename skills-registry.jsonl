@@ -1,0 +1,2 @@
+{"type":"skill","name":"src-patterns","file":".github/skills/src-patterns/SKILL.md","description":"Patterns and conventions from the src directory","category":"patterns","triggers":["src"]}
+{"type":"agent","name":"root","file":".github/agents/root/agent.yaml","description":"Root agent for this TypeScript repository","triggers":["typescript","main","primary"],"isSubAgent":false,"subAgents":[]}
