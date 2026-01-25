@@ -13,6 +13,10 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Build output
+dist/
+*.tsbuildinfo
+
 # Logs
 *.log
 npm-debug.log*
@@ -22,4 +26,7 @@ test-output/
 test-final/
 test-express/
 test-dryrun/
+coverage/
+
+# Artifacts
 *.tgz
