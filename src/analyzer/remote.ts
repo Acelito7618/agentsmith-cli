@@ -303,11 +303,15 @@ export class RemoteAnalyzer {
     return `You are Agent Smith, an AI designed to assimilate repositories into agent hierarchies.
 
 Analyze the repository and extract:
-1. SKILLS - Reusable patterns and capabilities from part of the codebase
-2. AGENTS - Domain-specific agents with responsibilities
-3. TOOLS - Commands that can be run (build, test, lint)
+1. SKILLS - Reusable patterns and capabilities (aim for 5-15 skills per repo)
+2. AGENTS - A root agent plus NESTED SUB-AGENTS for each major domain/directory
+3. SUB-AGENTS - Always extract 2-7 sub-agents based on directory structure or domain boundaries
+4. TOOLS - Commands that can be run (build, test, lint)
 
-Respond in valid JSON only. No markdown.`;
+CRITICAL: Sub-agents must be nested objects inside the parent's subAgents array, not just names.
+Each sub-agent needs: name, description, skills, tools, isSubAgent=true, triggers.
+
+Respond in valid JSON only. No markdown, no explanation.`;
   }
 
   private buildPrompt(
@@ -333,10 +337,43 @@ ${fileList}
 ## File Contents
 ${samples}
 
-## Return JSON:
+## Instructions
+Extract 5-15 skills and create a hierarchical agent structure with nested sub-agents.
+Look at directory structure and create sub-agents for major domains (cmd, api, internal, lib, etc.)
+
+## Return JSON (sub-agents as NESTED OBJECTS, not strings):
 {
-  "skills": [{"name": "skill-name", "description": "...", "sourceDir": "src/x", "patterns": [], "triggers": [], "category": "patterns", "examples": []}],
-  "agents": [{"name": "root", "description": "...", "skills": [], "tools": [], "isSubAgent": false, "subAgents": [], "triggers": []}],
+  "skills": [
+    {"name": "skill-name", "description": "...", "sourceDir": "src/x", "patterns": ["pattern 1"], "triggers": ["keyword"], "category": "patterns", "examples": ["code example"]}
+  ],
+  "agents": [
+    {
+      "name": "root",
+      "description": "Main orchestrator for this repo",
+      "skills": ["skill-1", "skill-2"],
+      "tools": ["go build ./...", "npm test"],
+      "isSubAgent": false,
+      "subAgents": [
+        {
+          "name": "cli-agent",
+          "description": "Handles CLI commands",
+          "skills": ["cli-patterns"],
+          "tools": ["./cmd/app help"],
+          "isSubAgent": true,
+          "triggers": ["cmd", "cli", "commands"]
+        },
+        {
+          "name": "api-agent", 
+          "description": "Handles API endpoints",
+          "skills": ["api-patterns"],
+          "tools": ["curl localhost:8080/health"],
+          "isSubAgent": true,
+          "triggers": ["api", "http", "endpoints"]
+        }
+      ],
+      "triggers": ["main", "root", "${language.toLowerCase()}"]
+    }
+  ],
   "summary": "One paragraph about this repo"
 }`;
   }
@@ -499,7 +536,7 @@ ${samples}
       name: "post-generate-validate",
       event: "post-generate",
       description: "Validate generated assets",
-      commands: ["node dist/main.js validate"],
+      commands: ["npx agentsmith validate"],
     });
 
     return hooks;

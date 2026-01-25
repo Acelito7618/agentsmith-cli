@@ -120,9 +120,18 @@ ${examples}
     // or special YAML characters
     if (/[:#{}[\]&*?|>!%@`]/.test(value) || value.startsWith("'") || value.startsWith('"')) {
       // Escape internal double quotes and wrap in double quotes
-      return `"${value.replace(/"/g, '\\"')}"`;
+      return `"${this.escapeYamlString(value)}"`;
     }
     return value;
+  }
+
+  /**
+   * Escape a string for use inside YAML double quotes
+   */
+  private escapeYamlString(value: string): string {
+    return value
+      .replace(/\\/g, "\\\\")  // Escape backslashes first
+      .replace(/"/g, '\\"');   // Escape double quotes
   }
 
   private getCategoryDescription(category: string): string {
@@ -309,10 +318,8 @@ ${agent.subAgents && agent.subAgents.length > 0 ? `\n## Sub-Agents\n\nFor specia
       tools.push("getTerminalOutput"); // Get terminal output
     }
     
-    // Sub-agent orchestration - CRITICAL for hierarchical agents
-    if (agent.subAgents && agent.subAgents.length > 0) {
-      tools.push("runSubagent");  // Run tasks in isolated subagent context
-    }
+    // Sub-agent orchestration - ALL agents should be able to delegate
+    tools.push("runSubagent");  // Run tasks in isolated subagent context
     
     // Source control context
     tools.push("changes");  // Current source control changes
@@ -325,8 +332,8 @@ ${agent.subAgents && agent.subAgents.length > 0 ? `\n## Sub-Agents\n\nFor specia
     const toolsList = agent.tools
       .map(
         (t) => `  - name: ${t.name}
-    command: "${t.command}"
-    description: "${t.description}"`
+    command: "${this.escapeYamlString(t.command)}"
+    description: "${this.escapeYamlString(t.description)}"`
       )
       .join("\n");
 
