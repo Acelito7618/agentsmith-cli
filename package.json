@@ -4,13 +4,13 @@
   "description": "Assimilate any repository into a fully autonomous GitHub Copilot agent",
   "type": "module",
   "bin": {
-    "agentsmith": "./dist/main.js"
+    "agentsmith": "./bin/agentsmith.js"
   },
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "dev": "tsx src/main.ts",
-    "start": "node dist/main.js",
+    "start": "tsx src/main.ts",
     "lint": "eslint src/",
     "test": "vitest"
   },
@@ -29,12 +29,12 @@
     "commander": "^12.0.0",
     "glob": "^10.3.0",
     "simple-git": "^3.30.0",
+    "tsx": "^4.7.0",
     "yaml": "^2.8.2",
     "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "tsx": "^4.7.0",
     "typescript": "^5.3.0",
     "vitest": "^1.2.0"
   },

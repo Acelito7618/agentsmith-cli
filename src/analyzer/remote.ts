@@ -142,7 +142,8 @@ export class RemoteAnalyzer {
       }
       await client.start();
       if (this.verbose) {
-        console.log("  [SDK] Client started, creating session...");
+        console.log("  [SDK] Client started, state:", client.getState());
+        console.log("  [SDK] Creating session...");
       }
 
       const session = await client.createSession({

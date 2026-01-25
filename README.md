@@ -50,7 +50,6 @@ npx agentsmith --help
 git clone https://github.com/shyamsridhar123/agentsmith-cli.git
 cd agentsmith-cli
 npm install
-npm run build
 npm install -g .
 
 # Or install globally from tarball (works better on Windows)
