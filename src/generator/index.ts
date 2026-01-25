@@ -1,6 +1,6 @@
 /**
  * Generator - The Replicator
- * Writes SKILL.md files, agent configs, and tool definitions.
+ * Writes SKILL.md files and a single .agent.md for VS Code.
  * "More..."
  */
 
@@ -26,7 +26,7 @@ export class Generator {
   async generate(analysis: AnalysisResult): Promise<GeneratorResult> {
     const files: string[] = [];
 
-    // Create .github/skills/ directory structure
+    // Create .github/skills/ and .github/agents/ directories
     const skillsDir = path.join(this.rootPath, ".github", "skills");
     const agentsDir = path.join(this.rootPath, ".github", "agents");
     const hooksDir = path.join(this.rootPath, ".github", "hooks");
@@ -43,11 +43,10 @@ export class Generator {
       files.push(skillPath);
     }
 
-    // Generate agent.yaml and .agent.md for each agent
-    for (const agent of analysis.agents) {
-      const agentPaths = await this.generateAgent(agent, agentsDir);
-      files.push(...agentPaths);
-    }
+    // Generate a SINGLE .agent.md file for the repo (VS Code custom agent)
+    // All the domain knowledge goes into skills, not separate agents
+    const agentPath = await this.generateMainAgent(analysis, agentsDir);
+    files.push(agentPath);
 
     // Generate hook.yaml for each hook
     for (const hook of analysis.hooks) {
@@ -145,242 +144,108 @@ ${examples}
     return descriptions[category] || "General patterns";
   }
 
-  private async generateAgent(agent: AgentDefinition, agentsDir: string): Promise<string[]> {
-    const agentDir = path.join(agentsDir, agent.name);
-    const yamlFile = path.join(agentDir, "agent.yaml");
-    const mdFile = path.join(agentsDir, `${agent.name}.agent.md`);
-    
-    const yamlPath = `.github/agents/${agent.name}/agent.yaml`;
-    const mdPath = `.github/agents/${agent.name}.agent.md`;
+  /**
+   * Generate ONE main .agent.md file for the entire repo
+   * This is the VS Code custom agent format
+   * @see https://code.visualstudio.com/docs/copilot/customization/custom-agents
+   */
+  private async generateMainAgent(analysis: AnalysisResult, agentsDir: string): Promise<string> {
+    // Use repo name from analysis (not output directory)
+    const agentName = analysis.repoName.toLowerCase().replace(/[^a-z0-9]/g, "-") || "repo";
+    const mdFile = path.join(agentsDir, `${agentName}.agent.md`);
+    const relativePath = `.github/agents/${agentName}.agent.md`;
 
-    const yamlContent = this.buildAgentYaml(agent);
-    const mdContent = this.buildAgentMd(agent);
+    const content = this.buildMainAgentMd(analysis, agentName);
 
     if (!this.dryRun) {
-      await fs.mkdir(agentDir, { recursive: true });
-      await fs.writeFile(yamlFile, yamlContent, "utf-8");
-      await fs.writeFile(mdFile, mdContent, "utf-8");
+      await fs.writeFile(mdFile, content, "utf-8");
     }
 
-    return [yamlPath, mdPath];
+    return relativePath;
   }
 
   /**
-   * Build VS Code compatible .agent.md file
-   * @see https://code.visualstudio.com/docs/copilot/customization/custom-agents
+   * Build the main .agent.md content
+   * Single agent that knows about all skills in the repo
    */
-  private buildAgentMd(agent: AgentDefinition): string {
-    // Map our tools to VS Code built-in tool names
-    const vsCodeTools = this.mapToVSCodeTools(agent);
-    const toolsList = vsCodeTools.length > 0 
-      ? `tools: [${vsCodeTools.map(t => `'${t}'`).join(', ')}]`
-      : "";
-
-    // infer: true allows this agent to be used as a subagent via runSubagent tool
-    // Sub-agents should be invokable, root agents too
-    const inferField = "infer: true";
-
-    // Build handoffs for sub-agents (VS Code handoff spec)
-    // Handoffs are UI buttons for user-driven workflow transitions
-    // @see https://code.visualstudio.com/docs/copilot/customization/custom-agents#_handoffs
-    let handoffsSection = "";
-    if (agent.subAgents && agent.subAgents.length > 0) {
-      const handoffs = agent.subAgents.map(subAgent => {
-        const name = this.extractName(subAgent);
-        return `  - label: Switch to ${this.toTitleCase(name)}
-    agent: ${name}
-    prompt: Continue working in the ${name} domain with the context above.
-    send: false`;
-      }).join("\n");
-      handoffsSection = `handoffs:\n${handoffs}`;
-    }
-
-    // Add handoff back to parent for sub-agents
-    if (agent.isSubAgent && agent.parentAgent) {
-      const parentHandoff = `  - label: Back to ${this.toTitleCase(agent.parentAgent)}
-    agent: ${agent.parentAgent}
-    prompt: Return to the parent agent for broader context.
-    send: false`;
-      if (handoffsSection) {
-        handoffsSection += "\n" + parentHandoff;
-      } else {
-        handoffsSection = `handoffs:\n${parentHandoff}`;
+  private buildMainAgentMd(analysis: AnalysisResult, agentName: string): string {
+    // Get root agent info if available
+    const rootAgent = analysis.agents.find(a => !a.isSubAgent);
+    const description = rootAgent?.description || analysis.summary || "AI assistant for this repository";
+    
+    // Collect all tools from all agents
+    const allTools = new Set<string>();
+    for (const agent of analysis.agents) {
+      for (const tool of agent.tools) {
+        allTools.add(tool.command);
       }
     }
 
-    // Build skills references for the body
-    const skillsSection = agent.skills.length > 0
-      ? agent.skills.map(s => {
-          const name = this.extractName(s);
-          return `- [${this.toTitleCase(name)}](skills/${name}/SKILL.md)`;
-        }).join("\n")
-      : "No specific skills defined.";
+    // VS Code built-in tools - comprehensive set for full agent capability
+    const vsCodeTools = [
+      "codebase",        // Semantic code search
+      "textSearch",      // Find text in files  
+      "fileSearch",      // Search files by glob
+      "readFile",        // Read file content
+      "listDirectory",   // List directory contents
+      "usages",          // Find references/implementations
+      "problems",        // Workspace issues
+      "fetch",           // Fetch web pages
+      "githubRepo",      // Search GitHub repos
+      "editFiles",       // Apply edits to files
+      "createFile",      // Create new files
+      "createDirectory", // Create directories
+      "runInTerminal",   // Run shell commands
+      "terminalLastCommand", // Get last terminal output
+      "changes",         // Source control changes
+    ];
 
-    // Build trigger keywords section
-    const triggersSection = agent.triggers.length > 0
-      ? agent.triggers.map(t => `"${t}"`).join(", ")
-      : "general queries";
+    const toolsList = `tools: [${vsCodeTools.map(t => `'${t}'`).join(", ")}]`;
 
-    // Domain context
-    const domainContext = agent.sourceDir 
-      ? `This agent specializes in code under \`${agent.sourceDir}/\`.`
-      : "This agent covers the entire repository.";
+    // Build skills section - link to all generated skills
+    const skillsSection = analysis.skills.length > 0
+      ? analysis.skills.map(s => `- [${this.toTitleCase(s.name)}](../skills/${s.name}/SKILL.md): ${s.description}`).join("\n")
+      : "No specific skills documented yet.";
 
-    // Sub-agent delegation instructions using runSubagent tool
-    let subAgentInstructions = "";
-    if (agent.subAgents && agent.subAgents.length > 0) {
-      const subAgentNames = agent.subAgents.map(s => this.extractName(s));
-      subAgentInstructions = `\n5. Use \`#runSubagent\` to delegate to: ${subAgentNames.join(", ")}`;
-    }
+    // Build commands section from detected tools
+    const commandsSection = allTools.size > 0
+      ? Array.from(allTools).map(cmd => `- \`${cmd}\``).join("\n")
+      : "- `npm install` / `pip install` / `go build` (as appropriate)";
 
     return `---
-name: ${this.toTitleCase(agent.name)}
-description: ${this.quoteYamlValue(agent.description)}
-${inferField}
+name: ${this.toTitleCase(agentName)}
+description: ${this.quoteYamlValue(description)}
 ${toolsList}
-${handoffsSection}
 ---
 
-# ${this.toTitleCase(agent.name)} Agent
+# ${this.toTitleCase(agentName)} Agent
 
-${agent.description}
-
-${domainContext}
-
-## Activation
-
-This agent is activated when the user mentions: ${triggersSection}
+${description}
 
 ## Skills
 
+This agent has knowledge of the following patterns and conventions:
+
 ${skillsSection}
+
+## Commands
+
+Common commands for this repository:
+
+${commandsSection}
 
 ## Instructions
 
-You are an AI assistant specialized in this codebase. When working in this domain:
+You are an AI assistant specialized in this codebase. When working on tasks:
 
-1. Follow the patterns documented in the linked skills above
-2. Use #codebase and #textSearch to find relevant code context
-3. Use #editFiles to make changes that follow detected conventions
-4. Use #runInTerminal to execute build, test, and lint commands${subAgentInstructions}
+1. Use \`#codebase\` to search for relevant code patterns
+2. Reference the skills above to follow established conventions
+3. Use \`#textSearch\` to find specific implementations
+4. Use \`#editFiles\` to make changes that follow detected patterns
+5. Use \`#runInTerminal\` to execute build, test, and lint commands
+6. Check \`#problems\` to ensure changes don't introduce errors
 
-${agent.isSubAgent ? `\n## Parent Agent\n\nThis is a sub-agent of **${agent.parentAgent || 'root'}**. Use the handoff button above to return for broader context.` : ""}
-
-${agent.subAgents && agent.subAgents.length > 0 ? `\n## Sub-Agents\n\nFor specialized work:\n- Use **handoff buttons** above for user-guided transitions\n- Use \`#runSubagent\` tool programmatically to delegate tasks\n\nAvailable sub-agents:\n${agent.subAgents.map(s => { const name = this.extractName(s); return `- **${this.toTitleCase(name)}** - handles ${name}-specific tasks`; }).join("\n")}` : ""}
-`.trim() + "\n";
-  }
-
-  /**
-   * Extract name from string or object
-   */
-  private extractName(value: unknown): string {
-    if (typeof value === "string") {
-      return value;
-    }
-    if (value && typeof value === "object" && "name" in value) {
-      return String((value as { name: unknown }).name);
-    }
-    return String(value ?? "unknown");
-  }
-
-  /**
-   * Map internal tool definitions to VS Code built-in tool names
-   * @see https://code.visualstudio.com/docs/copilot/reference/copilot-vscode-features#_chat-tools
-   */
-  private mapToVSCodeTools(agent: AgentDefinition): string[] {
-    const tools: string[] = [];
-    
-    // Core search and context tools (always needed)
-    tools.push("codebase");       // Semantic code search in workspace
-    tools.push("textSearch");     // Find text in files
-    tools.push("fileSearch");     // Search files by glob pattern
-    tools.push("readFile");       // Read file content
-    tools.push("listDirectory");  // List directory contents
-    tools.push("usages");         // Find references/implementations
-    tools.push("problems");       // Workspace issues from Problems panel
-    
-    // External context
-    tools.push("fetch");          // Fetch web page content
-    tools.push("githubRepo");     // Search GitHub repositories
-    
-    // Editing tools (for agents that can modify code)
-    if (!agent.isSubAgent || agent.tools.length > 0) {
-      tools.push("editFiles");      // Apply edits to files
-      tools.push("createFile");     // Create new files
-      tools.push("createDirectory"); // Create directories
-    }
-    
-    // Terminal and task execution
-    if (agent.tools.length > 0) {
-      tools.push("runInTerminal");     // Run shell commands
-      tools.push("terminalLastCommand"); // Get last terminal output
-      tools.push("runTask");           // Run workspace tasks
-      tools.push("getTerminalOutput"); // Get terminal output
-    }
-    
-    // Sub-agent orchestration - ALL agents should be able to delegate
-    tools.push("runSubagent");  // Run tasks in isolated subagent context
-    
-    // Source control context
-    tools.push("changes");  // Current source control changes
-    
-    return tools;
-  }
-
-  private buildAgentYaml(agent: AgentDefinition): string {
-    const skillsList = agent.skills.map((s) => `  - ${s}`).join("\n");
-    const toolsList = agent.tools
-      .map(
-        (t) => `  - name: ${t.name}
-    command: "${this.escapeYamlString(t.command)}"
-    description: "${this.escapeYamlString(t.description)}"`
-      )
-      .join("\n");
-
-    const triggersList = agent.triggers.map((t) => `  - "${t}"`).join("\n");
-
-    // Build sub-agents list if present
-    const subAgentsList = agent.subAgents?.length 
-      ? agent.subAgents.map((s) => {
-          const name = typeof s === "string" ? s : (s as { name?: string }).name ?? String(s);
-          return `  - ${name}`;
-        }).join("\n")
-      : "";
-
-    // Build hierarchy section
-    let hierarchySection = `isSubAgent: ${agent.isSubAgent}`;
-    if (agent.parentAgent) {
-      hierarchySection += `\nparentAgent: ${agent.parentAgent}`;
-    }
-    if (agent.subAgents?.length) {
-      hierarchySection += `\nsubAgents:\n${subAgentsList}`;
-    }
-    if (agent.sourceDir) {
-      hierarchySection += `\nsourceDir: "${agent.sourceDir}"`;
-    }
-
-    return `# Agent Configuration
-# Generated by Agent Smith
-# "The best thing about being me... there are so many of me."
-
-name: ${agent.name}
-description: ${this.quoteYamlValue(agent.description)}
-version: "1.0"
-
-# Skills this agent can use
-skills:
-${skillsList || "  []"}
-
-# Tools this agent can execute
-tools:
-${toolsList || "  []"}
-
-# Keywords that activate this agent
-triggers:
-${triggersList || "  []"}
-
-# Agent hierarchy
-${hierarchySection}
+Always follow the patterns documented in the linked skills when making changes.
 `;
   }
 

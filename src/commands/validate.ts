@@ -139,12 +139,9 @@ async function validateAgents(
 
   try {
     const entries = await fs.readdir(agentsDir, { withFileTypes: true });
-    const agentDirs = entries.filter((e) => e.isDirectory());
     const agentMdFiles = entries.filter((e) => e.isFile() && e.name.endsWith(".agent.md"));
 
-    let hasRootAgent = false;
-    let validatedYamlCount = 0;
-    let validatedMdCount = 0;
+    let validatedCount = 0;
 
     // Validate .agent.md files (VS Code custom agents)
     for (const file of agentMdFiles) {
@@ -185,26 +182,7 @@ async function validateAgents(
           result.valid = false;
         }
 
-        // Validate handoffs if present
-        if (meta.handoffs) {
-          if (!Array.isArray(meta.handoffs)) {
-            result.errors.push(`${file.name}: 'handoffs' must be an array`);
-            result.valid = false;
-          } else {
-            for (const handoff of meta.handoffs) {
-              if (!handoff.label || !handoff.agent) {
-                result.errors.push(`${file.name}: handoff missing 'label' or 'agent'`);
-                result.valid = false;
-              }
-            }
-          }
-        }
-
-        if (file.name === "root.agent.md") {
-          hasRootAgent = true;
-        }
-
-        validatedMdCount++;
+        validatedCount++;
 
         if (verbose) {
           console.log(chalk.green(`  ✓ agents/${file.name}`));
@@ -215,73 +193,13 @@ async function validateAgents(
       }
     }
 
-    // Validate agent.yaml files (structured data)
-    for (const dir of agentDirs) {
-      const agentFile = path.join(agentsDir, dir.name, "agent.yaml");
-
-      try {
-        await fs.access(agentFile);
-      } catch {
-        // Skip directories without agent.yaml (stale from previous runs)
-        continue;
-      }
-
-      try {
-        const content = await fs.readFile(agentFile, "utf-8");
-        const agent = yaml.parse(content);
-
-        if (!agent.name) {
-          result.errors.push(`${dir.name}/agent.yaml: Missing 'name' field`);
-          result.valid = false;
-        }
-
-        if (!agent.description) {
-          result.warnings.push(`${dir.name}/agent.yaml: Missing 'description' field`);
-        }
-
-        if (agent.name === "root" || agent.isSubAgent === false) {
-          hasRootAgent = true;
-        }
-
-        // Validate skills references exist
-        if (agent.skills && Array.isArray(agent.skills)) {
-          for (const skillName of agent.skills) {
-            const skillPath = path.join(rootPath, ".github", "skills", skillName, "SKILL.md");
-            try {
-              await fs.access(skillPath);
-            } catch {
-              result.warnings.push(
-                `${dir.name}/agent.yaml: References non-existent skill '${skillName}'`
-              );
-            }
-          }
-        }
-
-        validatedYamlCount++;
-
-        if (verbose) {
-          console.log(chalk.green(`  ✓ agents/${dir.name}/agent.yaml`));
-        }
-      } catch (e) {
-        result.errors.push(`${dir.name}/agent.yaml: Invalid YAML - ${(e as Error).message}`);
-        result.valid = false;
-      }
-    }
-
-    const totalCount = validatedMdCount + validatedYamlCount;
-    
-    if (totalCount === 0) {
-      result.errors.push("No agents found in .github/agents/");
-      result.valid = false;
-    }
-
-    if (!hasRootAgent) {
-      result.errors.push("No root agent found (need root.agent.md or agent with isSubAgent: false)");
+    if (validatedCount === 0) {
+      result.errors.push("No .agent.md files found in .github/agents/");
       result.valid = false;
     }
 
     if (!verbose) {
-      console.log(chalk.gray(`  Validated ${validatedMdCount} .agent.md file(s), ${validatedYamlCount} agent.yaml file(s)`));
+      console.log(chalk.gray(`  Validated ${validatedCount} agent(s)`));
     }
   } catch {
     result.errors.push("No .github/agents/ directory found");

@@ -47,6 +47,7 @@ export interface HookDefinition {
 }
 
 export interface AnalysisResult {
+  repoName: string;
   skills: SkillDefinition[];
   agents: AgentDefinition[];
   tools: ToolDefinition[];
@@ -397,6 +398,7 @@ Extract skills, agents (with hierarchy), and tools from this codebase. Return JS
       const flatAgents = this.flattenAgents(parsed.agents || []);
 
       return {
+        repoName: path.basename(scanResult.rootPath),
         skills: parsed.skills || [],
         agents: flatAgents,
         tools: this.extractAllTools(flatAgents),
@@ -569,6 +571,7 @@ Extract skills, agents (with hierarchy), and tools from this codebase. Return JS
     const hooks = this.generateDefaultHooks(scanResult);
 
     return {
+      repoName: path.basename(scanResult.rootPath),
       skills,
       agents,
       tools,

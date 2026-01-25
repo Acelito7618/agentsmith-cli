@@ -77,6 +77,7 @@ export async function assimilateCommand(
     // Generate
     const generator = new Generator(outputPath, options.dryRun, options.verbose);
     const generated = await generator.generate({
+      repoName: result.repo.repo,
       skills: result.skills,
       agents: result.agents,
       tools: result.tools,
@@ -102,12 +103,9 @@ export async function assimilateCommand(
     }
 
     // Summary
-    const subAgentCount = result.agents.filter(a => a.isSubAgent).length;
-    const primaryCount = result.agents.length - subAgentCount;
-    
     console.log(
       chalk.green("\n[COMPLETE]"),
-      `${result.skills.length} skills, ${primaryCount} agents, ${subAgentCount} sub-agents, ${result.hooks.length} hooks generated.`
+      `${result.skills.length} skills, 1 agent, ${result.hooks.length} hooks generated.`
     );
 
     if (options.dryRun) {
@@ -202,12 +200,9 @@ async function assimilateLocal(target: string, options: AssimilateOptions): Prom
       await hookRunner.execute("post-generate");
     }
 
-    const subAgentCount = analysisResult.agents.filter(a => a.isSubAgent).length;
-    const primaryCount = analysisResult.agents.length - subAgentCount;
-    
     console.log(
       chalk.green("\n[COMPLETE]"),
-      `${analysisResult.skills.length} skills, ${primaryCount} agents, ${subAgentCount} sub-agents, ${analysisResult.hooks.length} hooks generated.`
+      `${analysisResult.skills.length} skills, 1 agent, ${analysisResult.hooks.length} hooks generated.`
     );
 
     if (options.dryRun) {
