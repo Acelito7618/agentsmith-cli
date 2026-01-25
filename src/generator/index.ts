@@ -43,10 +43,10 @@ export class Generator {
       files.push(skillPath);
     }
 
-    // Generate agent.yaml for each agent
+    // Generate agent.yaml and .agent.md for each agent
     for (const agent of analysis.agents) {
-      const agentPath = await this.generateAgent(agent, agentsDir);
-      files.push(agentPath);
+      const agentPaths = await this.generateAgent(agent, agentsDir);
+      files.push(...agentPaths);
     }
 
     // Generate hook.yaml for each hook
@@ -136,19 +136,188 @@ ${examples}
     return descriptions[category] || "General patterns";
   }
 
-  private async generateAgent(agent: AgentDefinition, agentsDir: string): Promise<string> {
+  private async generateAgent(agent: AgentDefinition, agentsDir: string): Promise<string[]> {
     const agentDir = path.join(agentsDir, agent.name);
-    const agentFile = path.join(agentDir, "agent.yaml");
-    const relativePath = `.github/agents/${agent.name}/agent.yaml`;
+    const yamlFile = path.join(agentDir, "agent.yaml");
+    const mdFile = path.join(agentsDir, `${agent.name}.agent.md`);
+    
+    const yamlPath = `.github/agents/${agent.name}/agent.yaml`;
+    const mdPath = `.github/agents/${agent.name}.agent.md`;
 
-    const content = this.buildAgentYaml(agent);
+    const yamlContent = this.buildAgentYaml(agent);
+    const mdContent = this.buildAgentMd(agent);
 
     if (!this.dryRun) {
       await fs.mkdir(agentDir, { recursive: true });
-      await fs.writeFile(agentFile, content, "utf-8");
+      await fs.writeFile(yamlFile, yamlContent, "utf-8");
+      await fs.writeFile(mdFile, mdContent, "utf-8");
     }
 
-    return relativePath;
+    return [yamlPath, mdPath];
+  }
+
+  /**
+   * Build VS Code compatible .agent.md file
+   * @see https://code.visualstudio.com/docs/copilot/customization/custom-agents
+   */
+  private buildAgentMd(agent: AgentDefinition): string {
+    // Map our tools to VS Code built-in tool names
+    const vsCodeTools = this.mapToVSCodeTools(agent);
+    const toolsList = vsCodeTools.length > 0 
+      ? `tools: [${vsCodeTools.map(t => `'${t}'`).join(', ')}]`
+      : "";
+
+    // infer: true allows this agent to be used as a subagent via runSubagent tool
+    // Sub-agents should be invokable, root agents too
+    const inferField = "infer: true";
+
+    // Build handoffs for sub-agents (VS Code handoff spec)
+    // Handoffs are UI buttons for user-driven workflow transitions
+    // @see https://code.visualstudio.com/docs/copilot/customization/custom-agents#_handoffs
+    let handoffsSection = "";
+    if (agent.subAgents && agent.subAgents.length > 0) {
+      const handoffs = agent.subAgents.map(subAgent => {
+        const name = this.extractName(subAgent);
+        return `  - label: Switch to ${this.toTitleCase(name)}
+    agent: ${name}
+    prompt: Continue working in the ${name} domain with the context above.
+    send: false`;
+      }).join("\n");
+      handoffsSection = `handoffs:\n${handoffs}`;
+    }
+
+    // Add handoff back to parent for sub-agents
+    if (agent.isSubAgent && agent.parentAgent) {
+      const parentHandoff = `  - label: Back to ${this.toTitleCase(agent.parentAgent)}
+    agent: ${agent.parentAgent}
+    prompt: Return to the parent agent for broader context.
+    send: false`;
+      if (handoffsSection) {
+        handoffsSection += "\n" + parentHandoff;
+      } else {
+        handoffsSection = `handoffs:\n${parentHandoff}`;
+      }
+    }
+
+    // Build skills references for the body
+    const skillsSection = agent.skills.length > 0
+      ? agent.skills.map(s => {
+          const name = this.extractName(s);
+          return `- [${this.toTitleCase(name)}](skills/${name}/SKILL.md)`;
+        }).join("\n")
+      : "No specific skills defined.";
+
+    // Build trigger keywords section
+    const triggersSection = agent.triggers.length > 0
+      ? agent.triggers.map(t => `"${t}"`).join(", ")
+      : "general queries";
+
+    // Domain context
+    const domainContext = agent.sourceDir 
+      ? `This agent specializes in code under \`${agent.sourceDir}/\`.`
+      : "This agent covers the entire repository.";
+
+    // Sub-agent delegation instructions using runSubagent tool
+    let subAgentInstructions = "";
+    if (agent.subAgents && agent.subAgents.length > 0) {
+      const subAgentNames = agent.subAgents.map(s => this.extractName(s));
+      subAgentInstructions = `\n5. Use \`#runSubagent\` to delegate to: ${subAgentNames.join(", ")}`;
+    }
+
+    return `---
+name: ${this.toTitleCase(agent.name)}
+description: ${this.quoteYamlValue(agent.description)}
+${inferField}
+${toolsList}
+${handoffsSection}
+---
+
+# ${this.toTitleCase(agent.name)} Agent
+
+${agent.description}
+
+${domainContext}
+
+## Activation
+
+This agent is activated when the user mentions: ${triggersSection}
+
+## Skills
+
+${skillsSection}
+
+## Instructions
+
+You are an AI assistant specialized in this codebase. When working in this domain:
+
+1. Follow the patterns documented in the linked skills above
+2. Use #codebase and #textSearch to find relevant code context
+3. Use #editFiles to make changes that follow detected conventions
+4. Use #runInTerminal to execute build, test, and lint commands${subAgentInstructions}
+
+${agent.isSubAgent ? `\n## Parent Agent\n\nThis is a sub-agent of **${agent.parentAgent || 'root'}**. Use the handoff button above to return for broader context.` : ""}
+
+${agent.subAgents && agent.subAgents.length > 0 ? `\n## Sub-Agents\n\nFor specialized work:\n- Use **handoff buttons** above for user-guided transitions\n- Use \`#runSubagent\` tool programmatically to delegate tasks\n\nAvailable sub-agents:\n${agent.subAgents.map(s => { const name = this.extractName(s); return `- **${this.toTitleCase(name)}** - handles ${name}-specific tasks`; }).join("\n")}` : ""}
+`.trim() + "\n";
+  }
+
+  /**
+   * Extract name from string or object
+   */
+  private extractName(value: unknown): string {
+    if (typeof value === "string") {
+      return value;
+    }
+    if (value && typeof value === "object" && "name" in value) {
+      return String((value as { name: unknown }).name);
+    }
+    return String(value ?? "unknown");
+  }
+
+  /**
+   * Map internal tool definitions to VS Code built-in tool names
+   * @see https://code.visualstudio.com/docs/copilot/reference/copilot-vscode-features#_chat-tools
+   */
+  private mapToVSCodeTools(agent: AgentDefinition): string[] {
+    const tools: string[] = [];
+    
+    // Core search and context tools (always needed)
+    tools.push("codebase");       // Semantic code search in workspace
+    tools.push("textSearch");     // Find text in files
+    tools.push("fileSearch");     // Search files by glob pattern
+    tools.push("readFile");       // Read file content
+    tools.push("listDirectory");  // List directory contents
+    tools.push("usages");         // Find references/implementations
+    tools.push("problems");       // Workspace issues from Problems panel
+    
+    // External context
+    tools.push("fetch");          // Fetch web page content
+    tools.push("githubRepo");     // Search GitHub repositories
+    
+    // Editing tools (for agents that can modify code)
+    if (!agent.isSubAgent || agent.tools.length > 0) {
+      tools.push("editFiles");      // Apply edits to files
+      tools.push("createFile");     // Create new files
+      tools.push("createDirectory"); // Create directories
+    }
+    
+    // Terminal and task execution
+    if (agent.tools.length > 0) {
+      tools.push("runInTerminal");     // Run shell commands
+      tools.push("terminalLastCommand"); // Get last terminal output
+      tools.push("runTask");           // Run workspace tasks
+      tools.push("getTerminalOutput"); // Get terminal output
+    }
+    
+    // Sub-agent orchestration - CRITICAL for hierarchical agents
+    if (agent.subAgents && agent.subAgents.length > 0) {
+      tools.push("runSubagent");  // Run tasks in isolated subagent context
+    }
+    
+    // Source control context
+    tools.push("changes");  // Current source control changes
+    
+    return tools;
   }
 
   private buildAgentYaml(agent: AgentDefinition): string {
@@ -165,7 +334,10 @@ ${examples}
 
     // Build sub-agents list if present
     const subAgentsList = agent.subAgents?.length 
-      ? agent.subAgents.map((s) => `  - ${s}`).join("\n")
+      ? agent.subAgents.map((s) => {
+          const name = typeof s === "string" ? s : (s as { name?: string }).name ?? String(s);
+          return `  - ${name}`;
+        }).join("\n")
       : "";
 
     // Build hierarchy section
@@ -241,8 +413,16 @@ ${commandsList}
     return content;
   }
 
-  private toTitleCase(str: string): string {
-    return str
+  private toTitleCase(str: string | unknown): string {
+    // Handle non-string inputs (objects, undefined, etc.)
+    if (typeof str !== "string") {
+      if (str && typeof str === "object" && "name" in str) {
+        str = (str as { name: string }).name;
+      } else {
+        str = String(str ?? "unknown");
+      }
+    }
+    return (str as string)
       .split("-")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");

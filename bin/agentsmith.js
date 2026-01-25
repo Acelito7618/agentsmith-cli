@@ -2,7 +2,7 @@
 
 /**
  * Agent Smith CLI Entry Point
- * Uses tsx to run TypeScript directly (resolves SDK compatibility issues)
+ * Uses tsx to run TypeScript directly (avoids bundling issues with SDK)
  */
 
 import { spawn } from 'child_process';
@@ -23,3 +23,4 @@ const child = spawn('npx', ['tsx', mainTs, ...process.argv.slice(2)], {
 child.on('close', (code) => {
   process.exit(code ?? 0);
 });
+

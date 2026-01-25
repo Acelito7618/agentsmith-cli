@@ -1,18 +1,19 @@
 {
   "name": "agentsmith",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Assimilate any repository into a fully autonomous GitHub Copilot agent",
   "type": "module",
   "bin": {
     "agentsmith": "./bin/agentsmith.js"
   },
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "dev": "tsx src/main.ts",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "start": "tsx src/main.ts",
+    "prepublishOnly": "npm run build",
     "lint": "eslint src/",
-    "test": "vitest"
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "cli",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
     "typescript": "^5.3.0",
     "vitest": "^1.2.0"
   },

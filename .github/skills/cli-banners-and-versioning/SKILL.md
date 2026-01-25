@@ -28,7 +28,7 @@ Use this skill when:
 ## Examples
 
 ```
-program.name('agentsmith').version('0.2.0').addHelpText('beforeAll', banner);
+program.name('agentsmith').version('0.3.0').addHelpText('beforeAll', banner);
 ```
 
 ## Category

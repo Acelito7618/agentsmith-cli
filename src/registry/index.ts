@@ -11,6 +11,7 @@ export interface RegistryEntry {
   type: "skill" | "agent";
   name: string;
   file: string;
+  vsCodeAgent?: string; // VS Code .agent.md file path
   description: string;
   category?: string;
   triggers: string[];
@@ -52,6 +53,7 @@ export class Registry {
           type: "agent",
           name: agent.name,
           file: `.github/agents/${agent.name}/agent.yaml`,
+          vsCodeAgent: `.github/agents/${agent.name}.agent.md`,
           description: agent.description,
           triggers: agent.triggers,
           isSubAgent: agent.isSubAgent,

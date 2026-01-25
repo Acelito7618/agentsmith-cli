@@ -54,7 +54,7 @@ npm install -g .
 
 # Or install globally from tarball (works better on Windows)
 npm pack
-npm install -g ./agentsmith-0.2.0.tgz
+npm install -g ./agentsmith-0.3.0.tgz
 ```
 
 ### Uninstall
@@ -97,12 +97,14 @@ agentsmith assimilate https://github.com/org/repo --output ./my-agents
 .github/
 ├── skills/
 │   └── <skill-name>/
-│       └── SKILL.md          # Skill definition
+│       └── SKILL.md          # Skill definition (custom instructions)
 ├── agents/
+│   ├── root.agent.md         # VS Code custom agent (primary)
+│   ├── <sub-agent>.agent.md  # VS Code custom agents (domain-specific)
 │   ├── root/
-│   │   └── agent.yaml        # Primary agent
+│   │   └── agent.yaml        # Structured data for tooling
 │   └── <sub-agent>/
-│       └── agent.yaml        # Domain-specific sub-agents
+│       └── agent.yaml
 └── hooks/
     ├── pre-commit-quality.yaml
     ├── pre-push-tests.yaml
@@ -110,6 +112,12 @@ agentsmith assimilate https://github.com/org/repo --output ./my-agents
 
 skills-registry.jsonl          # Searchable index
 ```
+
+### Output Formats
+
+- **`.agent.md`** — VS Code custom agents per the [official specification](https://code.visualstudio.com/docs/copilot/customization/custom-agents). These appear in VS Code's agent dropdown.
+- **`agent.yaml`** — Structured data for programmatic access, tooling, and automation.
+- **`SKILL.md`** — Reusable instructions that can be referenced by agents.
 
 ## Commands
 
@@ -184,6 +192,12 @@ $ agentsmith assimilate https://github.com/expressjs/express
   ✓ MIT - permissive license detected
 
 [GENERATE] Writing assets...
+  ✓ .github/skills/response-headers/SKILL.md
+  ✓ .github/skills/content-negotiation/SKILL.md
+  ✓ .github/skills/routing-patterns/SKILL.md
+  ✓ .github/agents/root.agent.md
+  ✓ .github/agents/core.agent.md
+  ✓ .github/agents/routing.agent.md
   ✓ 11 skills
   ✓ 7 agents (1 root + 6 sub-agents)
   ✓ 3 hooks
@@ -196,7 +210,7 @@ $ agentsmith assimilate https://github.com/expressjs/express
 
 ## Agent Hierarchy
 
-Agent Smith creates hierarchical agent structures:
+Agent Smith creates hierarchical agent structures with proper handoffs and sub-agent support:
 
 ```
 root
@@ -210,8 +224,37 @@ root
 
 Each agent has:
 - **Skills** — Reusable patterns it can apply
-- **Tools** — Commands it can execute
+- **Tools** — VS Code built-in tools for code search, editing, and execution
+- **Handoffs** — Buttons to transition between agents with context
 - **Triggers** — Keywords that activate it
+
+### VS Code Built-in Tools
+
+Generated agents use these [VS Code built-in tools](https://code.visualstudio.com/docs/copilot/reference/copilot-vscode-features#_chat-tools):
+
+| Tool | Purpose |
+|------|---------|
+| `codebase` | Semantic code search in workspace |
+| `textSearch` | Find text in files |
+| `readFile` | Read file content |
+| `editFiles` | Apply edits to files |
+| `runInTerminal` | Run shell commands |
+| `runSubagent` | Delegate to sub-agents |
+| `changes` | Source control changes |
+
+### Handoffs
+
+Agents with sub-agents include handoff buttons for workflow transitions:
+
+```yaml
+handoffs:
+  - label: Switch to Backend
+    agent: backend
+    prompt: Continue working in the backend domain with the context above.
+    send: false
+```
+
+Sub-agents include a handoff back to their parent agent for broader context.
 
 ## Requirements
 
@@ -271,7 +314,7 @@ If this project helps you build smarter AI agents, consider giving it a ⭐!
 ## Related Projects
 
 - [GitHub Copilot SDK](https://github.com/github/copilot-sdk) - The cognitive engine powering Agent Smith
-- [Agent Skills Spec](https://agentskills.io) - The standard for skill definitions
+- [VS Code Custom Agents](https://code.visualstudio.com/docs/copilot/customization/custom-agents) - The specification for generated agents
 
 ---
 

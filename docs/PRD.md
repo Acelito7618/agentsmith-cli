@@ -34,7 +34,7 @@ Powered by the **GitHub Copilot SDK**, Agent Smith performs deep semantic analys
 |--------|--------|
 | Generated agent achieves full agency | Can answer questions, make changes, run repo-specific tools |
 | Skill extraction coverage | ≥ 90% of identifiable patterns captured |
-| Generated assets valid | 100% comply with Agent Skills spec (agentskills.io) |
+| Generated assets valid | 100% comply with VS Code Custom Agents spec |
 | Analysis time | < 2 minutes for repos up to 50,000 LOC |
 | Zero manual intervention | Output is immediately usable without editing |
 
@@ -156,7 +156,7 @@ const session = await client.createSession({
 | **Full Agency: Act** | Request a code change | Change follows detected conventions |
 | **Full Agency: Execute** | Request build/test run | Correct command invoked for stack |
 | **Skill Coverage** | Compare generated skills to manual baseline | ≥ 90% overlap |
-| **Schema Validity** | Validate all generated SKILL.md files | 100% pass agentskills.io spec |
+| **Schema Validity** | Validate all generated .agent.md files | 100% pass VS Code custom agents spec |
 
 ---
 
@@ -234,20 +234,24 @@ const session = await client.createSession({
 ├── .github/
 │   ├── skills/
 │   │   ├── <skill-name>/
-│   │   │   ├── SKILL.md          # Skill definition
-│   │   │   └── examples/         # Optional: example files
+│   │   │   └── SKILL.md          # Skill definition (custom instructions)
 │   │   └── ...
 │   ├── agents/
-│   │   ├── primary/
-│   │   │   ├── agent.yaml        # Main agent config
-│   │   │   └── tools/            # Tool definitions
+│   │   ├── root.agent.md         # VS Code custom agent (primary)
+│   │   ├── <sub-agent>.agent.md  # VS Code custom agents
+│   │   ├── root/
+│   │   │   └── agent.yaml        # Internal agent config (structured data)
 │   │   └── <sub-agent>/
 │   │       └── agent.yaml
 │   └── hooks/
-│       ├── pre-analyze.yaml
-│       └── post-generate.yaml
+│       ├── pre-commit-quality.yaml
+│       └── post-generate-validate.yaml
 └── skills-registry.jsonl          # Searchable skill index
 ```
+
+**Dual Format Approach:**
+- `.agent.md` files: VS Code custom agents per [official spec](https://code.visualstudio.com/docs/copilot/customization/custom-agents)
+- `agent.yaml` files: Structured data for tooling, automation, and programmatic access
 
 ### Skills Registry Format
 
@@ -417,43 +421,119 @@ $ agentsmith search "auth"
 
 ## 7. Implementation Notes
 
-### Agent Configuration Schema
+### VS Code Custom Agent Format (.agent.md)
+
+The primary output format follows the [VS Code Custom Agents specification](https://code.visualstudio.com/docs/copilot/customization/custom-agents):
+
+```markdown
+---
+name: Root
+description: Primary agent for this repository
+tools: ['codebase', 'textSearch', 'fileSearch', 'readFile', 'listDirectory', 'usages', 'problems', 'fetch', 'githubRepo', 'editFiles', 'createFile', 'createDirectory', 'runInTerminal', 'terminalLastCommand', 'runTask', 'getTerminalOutput', 'runSubagent', 'changes']
+handoffs:
+  - label: Switch to Backend
+    agent: backend
+    prompt: Continue working in the backend domain with the context above.
+    send: false
+  - label: Switch to Frontend
+    agent: frontend
+    prompt: Continue working in the frontend domain with the context above.
+    send: false
+---
+
+# Root Agent
+
+Primary agent for this repository.
+
+## Activation
+
+This agent is activated when the user mentions: "main", "primary", "typescript"
+
+## Skills
+
+- [Authentication](skills/authentication/SKILL.md)
+- [API Design](skills/api-design/SKILL.md)
+
+## Instructions
+
+You are an AI assistant specialized in this codebase. When working in this domain:
+
+1. Follow the patterns documented in the linked skills above
+2. Use #codebase and #textSearch to find relevant code context
+3. Use #editFiles to make changes that follow detected conventions
+4. Use #runInTerminal to execute build, test, and lint commands
+5. Use #runSubagent to delegate specialized tasks to sub-agents
+
+## Sub-Agents
+
+For specialized work, use handoffs or #runSubagent to delegate to:
+- **Backend** - handles backend-specific tasks
+- **Frontend** - handles frontend-specific tasks
+```
+
+### VS Code Built-in Tools Reference
+
+The generated agents use these [VS Code built-in tools](https://code.visualstudio.com/docs/copilot/reference/copilot-vscode-features#_chat-tools):
+
+| Tool | Purpose |
+|------|---------|
+| `codebase` | Semantic code search in workspace |
+| `textSearch` | Find text in files |
+| `fileSearch` | Search files by glob pattern |
+| `readFile` | Read file content |
+| `listDirectory` | List directory contents |
+| `usages` | Find references/implementations |
+| `problems` | Workspace issues from Problems panel |
+| `fetch` | Fetch web page content |
+| `githubRepo` | Search GitHub repositories |
+| `editFiles` | Apply edits to files |
+| `createFile` | Create new files |
+| `createDirectory` | Create directories |
+| `runInTerminal` | Run shell commands |
+| `terminalLastCommand` | Get last terminal output |
+| `runTask` | Run workspace tasks |
+| `getTerminalOutput` | Get terminal output |
+| `runSubagent` | **Run tasks in isolated subagent context** |
+| `changes` | Current source control changes |
+
+### Handoffs and Sub-Agent Orchestration
+
+Handoffs enable workflow transitions between agents:
 
 ```yaml
-# .github/agents/primary/agent.yaml
-name: repo-agent
+handoffs:
+  - label: Switch to Backend    # Button text shown to user
+    agent: backend              # Target agent name
+    prompt: Continue working... # Pre-filled prompt
+    send: false                 # Don't auto-submit
+```
+
+For programmatic sub-agent invocation, use `#runSubagent` in the agent instructions.
+
+### Structured Data Format (agent.yaml)
+
+For programmatic access and tooling, we also generate YAML:
+
+```yaml
+# .github/agents/root/agent.yaml
+name: root
 description: Primary agent that represents this repository
 version: "1.0"
 
 skills:
   - authentication
   - api-design
-  - error-handling
-  - testing
-
-subAgents:
-  - name: frontend
-    path: .github/agents/frontend/
-    triggers: ["react", "component", "ui", "css"]
-  - name: backend
-    path: .github/agents/backend/
-    triggers: ["api", "database", "auth", "server"]
 
 tools:
   - name: build
     command: "npm run build"
     description: "Build the project"
-  - name: test
-    command: "npm test"
-    description: "Run test suite"
-  - name: lint
-    command: "npm run lint"
-    description: "Run linter"
 
-hooks:
-  pre-commit:
-    - lint
-    - test
+subAgents:
+  - backend
+  - frontend
+
+isSubAgent: false
 ```
 
 ### Skill Extraction Heuristics

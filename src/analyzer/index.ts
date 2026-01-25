@@ -393,10 +393,13 @@ Extract skills, agents (with hierarchy), and tools from this codebase. Return JS
 
       const parsed = JSON.parse(jsonMatch[0]);
 
+      // Flatten nested sub-agents into the agents array
+      const flatAgents = this.flattenAgents(parsed.agents || []);
+
       return {
         skills: parsed.skills || [],
-        agents: parsed.agents || [],
-        tools: this.extractAllTools(parsed.agents || []),
+        agents: flatAgents,
+        tools: this.extractAllTools(flatAgents),
         hooks: parsed.hooks || this.generateDefaultHooks(scanResult),
         summary: parsed.summary || "",
       };
@@ -404,6 +407,97 @@ Extract skills, agents (with hierarchy), and tools from this codebase. Return JS
       // Fallback: generate minimal structure based on scan
       return this.generateFallbackAnalysis(scanResult);
     }
+  }
+
+  /**
+   * Flatten nested sub-agents into a flat array
+   * The SDK may return sub-agents as objects inside parent.subAgents
+   * We need them as separate entries in the agents array
+   */
+  private flattenAgents(agents: unknown[]): AgentDefinition[] {
+    const result: AgentDefinition[] = [];
+
+    for (const rawAgent of agents) {
+      if (!rawAgent || typeof rawAgent !== "object") continue;
+      
+      const agent = rawAgent as Record<string, unknown>;
+      
+      // Extract nested sub-agent objects
+      const nestedSubAgents: unknown[] = [];
+      const subAgentNames: string[] = [];
+
+      const subAgentsArray = agent.subAgents as unknown[];
+      if (Array.isArray(subAgentsArray) && subAgentsArray.length > 0) {
+        for (const subAgent of subAgentsArray) {
+          if (typeof subAgent === "object" && subAgent !== null && "name" in subAgent) {
+            // It's a nested agent object - extract it
+            const nestedAgent = subAgent as Record<string, unknown>;
+            nestedAgent.isSubAgent = true;
+            nestedAgent.parentAgent = agent.name as string;
+            nestedSubAgents.push(nestedAgent);
+            subAgentNames.push(nestedAgent.name as string);
+          } else if (typeof subAgent === "string") {
+            // It's just a name reference
+            subAgentNames.push(subAgent);
+          }
+        }
+      }
+
+      // Build normalized agent
+      const normalizedAgent: AgentDefinition = {
+        name: String(agent.name || "unknown"),
+        description: String(agent.description || ""),
+        skills: Array.isArray(agent.skills) ? agent.skills.map(s => String(s)) : [],
+        tools: this.normalizeTools(agent.tools),
+        isSubAgent: Boolean(agent.isSubAgent),
+        parentAgent: agent.parentAgent ? String(agent.parentAgent) : undefined,
+        subAgents: subAgentNames.length > 0 ? subAgentNames : undefined,
+        triggers: Array.isArray(agent.triggers) ? agent.triggers.map(t => String(t)) : [],
+        sourceDir: agent.sourceDir ? String(agent.sourceDir) : undefined,
+      };
+
+      result.push(normalizedAgent);
+
+      // Recursively flatten any nested sub-agents
+      if (nestedSubAgents.length > 0) {
+        result.push(...this.flattenAgents(nestedSubAgents));
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Normalize tools to ToolDefinition format
+   * SDK may return tools as strings or objects
+   */
+  private normalizeTools(tools: unknown): ToolDefinition[] {
+    if (!tools || !Array.isArray(tools)) {
+      return [];
+    }
+
+    return tools.map((tool) => {
+      if (typeof tool === "string") {
+        return {
+          name: tool.split(" ")[0],
+          command: tool,
+          description: tool,
+        };
+      }
+      if (typeof tool === "object" && tool !== null) {
+        const t = tool as Record<string, unknown>;
+        return {
+          name: String(t.name || "unknown"),
+          command: String(t.command || t.name || ""),
+          description: String(t.description || t.name || ""),
+        };
+      }
+      return {
+        name: "unknown",
+        command: String(tool),
+        description: String(tool),
+      };
+    });
   }
 
   private extractAllTools(agents: AgentDefinition[]): ToolDefinition[] {

@@ -140,9 +140,82 @@ async function validateAgents(
   try {
     const entries = await fs.readdir(agentsDir, { withFileTypes: true });
     const agentDirs = entries.filter((e) => e.isDirectory());
+    const agentMdFiles = entries.filter((e) => e.isFile() && e.name.endsWith(".agent.md"));
 
     let hasRootAgent = false;
+    let validatedYamlCount = 0;
+    let validatedMdCount = 0;
 
+    // Validate .agent.md files (VS Code custom agents)
+    for (const file of agentMdFiles) {
+      const agentFile = path.join(agentsDir, file.name);
+      
+      try {
+        const content = await fs.readFile(agentFile, "utf-8");
+
+        // Check for required frontmatter
+        if (!content.startsWith("---")) {
+          result.errors.push(`${file.name}: Missing YAML frontmatter`);
+          result.valid = false;
+          continue;
+        }
+
+        const frontmatterEnd = content.indexOf("---", 3);
+        if (frontmatterEnd === -1) {
+          result.errors.push(`${file.name}: Malformed YAML frontmatter`);
+          result.valid = false;
+          continue;
+        }
+
+        const frontmatter = content.slice(4, frontmatterEnd).trim();
+        const meta = yaml.parse(frontmatter);
+
+        if (!meta.name) {
+          result.errors.push(`${file.name}: Missing 'name' in frontmatter`);
+          result.valid = false;
+        }
+
+        if (!meta.description) {
+          result.warnings.push(`${file.name}: Missing 'description' in frontmatter`);
+        }
+
+        // Validate tools array if present
+        if (meta.tools && !Array.isArray(meta.tools)) {
+          result.errors.push(`${file.name}: 'tools' must be an array`);
+          result.valid = false;
+        }
+
+        // Validate handoffs if present
+        if (meta.handoffs) {
+          if (!Array.isArray(meta.handoffs)) {
+            result.errors.push(`${file.name}: 'handoffs' must be an array`);
+            result.valid = false;
+          } else {
+            for (const handoff of meta.handoffs) {
+              if (!handoff.label || !handoff.agent) {
+                result.errors.push(`${file.name}: handoff missing 'label' or 'agent'`);
+                result.valid = false;
+              }
+            }
+          }
+        }
+
+        if (file.name === "root.agent.md") {
+          hasRootAgent = true;
+        }
+
+        validatedMdCount++;
+
+        if (verbose) {
+          console.log(chalk.green(`  ✓ agents/${file.name}`));
+        }
+      } catch (e) {
+        result.errors.push(`${file.name}: ${(e as Error).message}`);
+        result.valid = false;
+      }
+    }
+
+    // Validate agent.yaml files (structured data)
     for (const dir of agentDirs) {
       const agentFile = path.join(agentsDir, dir.name, "agent.yaml");
 
@@ -184,6 +257,8 @@ async function validateAgents(
           }
         }
 
+        validatedYamlCount++;
+
         if (verbose) {
           console.log(chalk.green(`  ✓ agents/${dir.name}/agent.yaml`));
         }
@@ -193,30 +268,20 @@ async function validateAgents(
       }
     }
 
-    // Count validated agents (directories with valid agent.yaml)
-    let validatedCount = 0;
-    for (const dir of agentDirs) {
-      const agentFile = path.join(agentsDir, dir.name, "agent.yaml");
-      try {
-        await fs.access(agentFile);
-        validatedCount++;
-      } catch {
-        // Skip
-      }
-    }
-
-    if (validatedCount === 0) {
+    const totalCount = validatedMdCount + validatedYamlCount;
+    
+    if (totalCount === 0) {
       result.errors.push("No agents found in .github/agents/");
       result.valid = false;
     }
 
     if (!hasRootAgent) {
-      result.errors.push("No root agent found (need an agent with isSubAgent: false)");
+      result.errors.push("No root agent found (need root.agent.md or agent with isSubAgent: false)");
       result.valid = false;
     }
 
     if (!verbose) {
-      console.log(chalk.gray(`  Validated ${validatedCount} agent(s)`));
+      console.log(chalk.gray(`  Validated ${validatedMdCount} .agent.md file(s), ${validatedYamlCount} agent.yaml file(s)`));
     }
   } catch {
     result.errors.push("No .github/agents/ directory found");

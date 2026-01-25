@@ -25,7 +25,7 @@ ${chalk.green("╚════════════════════�
 program
   .name("agentsmith")
   .description("Assimilate any repository into a fully autonomous GitHub Copilot agent")
-  .version("0.2.0")
+  .version("0.3.0")
   .addHelpText("beforeAll", banner)
   .addHelpText("after", `
 ${chalk.bold("Examples:")}
