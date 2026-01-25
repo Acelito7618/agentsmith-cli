@@ -96,7 +96,7 @@ export class Analyzer {
       
       // Create a session with custom tools for analysis
       const session = await this.client.createSession({
-        model: "gpt-5",
+        model: "gpt-5.2",
         streaming: true,
         systemMessage: {
           content: this.getSystemPrompt(scanResult),
