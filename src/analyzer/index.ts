@@ -64,10 +64,36 @@ export class Analyzer {
 
   async analyze(scanResult: ScanResult): Promise<AnalysisResult> {
     // Initialize Copilot SDK
-    this.client = new CopilotClient();
-    await this.client.start();
+    if (this.verbose) {
+      console.log("  [SDK] Initializing CopilotClient...");
+    }
+    
+    this.client = new CopilotClient({
+      logLevel: this.verbose ? "debug" : "error",
+    });
+    
+    if (this.verbose) {
+      console.log("  [SDK] Starting client...");
+    }
+    
+    try {
+      await this.client.start();
+    } catch (error) {
+      console.error("  [SDK] Failed to start client:", (error as Error).message);
+      console.error("  [SDK] Make sure Copilot CLI is installed and in PATH");
+      console.error("  [SDK] Falling back to heuristic analysis...\n");
+      return this.generateFallbackAnalysis(scanResult);
+    }
+
+    if (this.verbose) {
+      console.log("  [SDK] Client started successfully");
+    }
 
     try {
+      if (this.verbose) {
+        console.log("  [SDK] Creating session with model: gpt-5...");
+      }
+      
       // Create a session with custom tools for analysis
       const session = await this.client.createSession({
         model: "gpt-5",
@@ -77,28 +103,69 @@ export class Analyzer {
         },
       });
 
+      if (this.verbose) {
+        console.log("  [SDK] Session created successfully");
+      }
+
       // Prepare file samples for analysis
       const samples = await this.gatherFileSamples(scanResult);
+      
+      if (this.verbose) {
+        console.log(`  [SDK] Gathered ${samples.size} file samples`);
+      }
 
       // Ask Copilot to analyze and extract patterns
       const analysisPrompt = this.buildAnalysisPrompt(scanResult, samples);
+      
+      if (this.verbose) {
+        console.log(`  [SDK] Sending prompt (${analysisPrompt.length} chars)...`);
+      }
 
       let responseContent = "";
-      const done = new Promise<void>((resolve) => {
+      let eventCount = 0;
+      
+      const done = new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          console.error(`\n  [SDK] Timeout after 120s. Events received: ${eventCount}`);
+          reject(new Error("SDK timeout"));
+        }, 120000);
+        
         session.on((event) => {
+          eventCount++;
           const eventType = event.type as string;
           const eventData = event.data as Record<string, unknown>;
           
+          if (this.verbose && eventType !== "assistant.message_delta") {
+            console.log(`  [SDK] Event: ${eventType}`);
+          }
+          
           if (eventType === "assistant.message") {
             responseContent = (eventData.content as string) || "";
-            resolve();
-          } else if (eventType === "assistant.message.delta" && this.verbose) {
+            if (this.verbose) {
+              console.log(`  [SDK] Got final message (${responseContent.length} chars)`);
+            }
+          } else if (eventType === "assistant.message_delta") {
             process.stdout.write((eventData.deltaContent as string) || "");
+          } else if (eventType === "session.idle") {
+            clearTimeout(timeout);
+            if (this.verbose) {
+              console.log(`  [SDK] Session idle. Total events: ${eventCount}`);
+            }
+            resolve();
+          } else if (eventType === "error") {
+            clearTimeout(timeout);
+            console.error("  [SDK] Error event:", eventData);
+            reject(new Error("SDK error event"));
           }
         });
       });
 
       await session.send({ prompt: analysisPrompt });
+      
+      if (this.verbose) {
+        console.log("  [SDK] Prompt sent, waiting for response...");
+      }
+      
       await done;
 
       if (this.verbose) {
@@ -110,8 +177,18 @@ export class Analyzer {
 
       await session.destroy();
       return result;
+    } catch (error) {
+      console.error(`\n  [SDK] Error: ${(error as Error).message}`);
+      console.error("  [SDK] Falling back to heuristic analysis...\n");
+      return this.generateFallbackAnalysis(scanResult);
     } finally {
-      await this.client.stop();
+      if (this.client) {
+        try {
+          await this.client.stop();
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
     }
   }
 

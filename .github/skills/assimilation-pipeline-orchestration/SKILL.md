@@ -1,6 +1,6 @@
 ---
 name: assimilation-pipeline-orchestration
-description: Use to run the end-to-end assimilation phases: scan, analyze via Copilot SDK, license check, generate assets, build registry, and execute hooks.
+description: "Use to run the end-to-end assimilation phases - scan, analyze via Copilot SDK, license check, generate assets, build registry, and execute hooks."
 ---
 
 # Assimilation Pipeline Orchestration

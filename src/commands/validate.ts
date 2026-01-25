@@ -115,8 +115,9 @@ async function validateSkills(
         if (verbose) {
           console.log(chalk.green(`  ✓ skills/${dir.name}/SKILL.md`));
         }
-      } catch {
-        result.errors.push(`${dir.name}: Missing SKILL.md file`);
+      } catch (e) {
+        const err = e as NodeJS.ErrnoException;
+        result.errors.push(`${dir.name}: ${err.code === "ENOENT" ? "Missing SKILL.md file" : err.message}`);
         result.valid = false;
       }
     }

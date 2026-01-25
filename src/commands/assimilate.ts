@@ -6,17 +6,23 @@
 import chalk from "chalk";
 import { Scanner } from "../scanner/index.js";
 import { Analyzer } from "../analyzer/index.js";
+import { RemoteAnalyzer } from "../analyzer/remote.js";
 import { Generator } from "../generator/index.js";
 import { Registry } from "../registry/index.js";
 import { HookRunner } from "../hooks/index.js";
-import { resolveInput, isGitHubUrl, getRepoName } from "../utils/git.js";
-import { detectLicense, formatLicenseStatus } from "../utils/license.js";
+import { isGitHubUrl, getRepoName } from "../utils/git.js";
 
 interface AssimilateOptions {
   dryRun?: boolean;
   verbose?: boolean;
   output?: string;
 }
+
+// Permissive licenses
+const PERMISSIVE_LICENSES = [
+  "MIT", "Apache-2.0", "GPL-2.0", "GPL-3.0", "LGPL-2.1", "LGPL-3.0",
+  "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0", "Unlicense", "CC0-1.0",
+];
 
 export async function assimilateCommand(
   target: string,
@@ -25,20 +31,109 @@ export async function assimilateCommand(
   const isRemote = isGitHubUrl(target);
 
   if (isRemote) {
-    console.log(chalk.green("\n[CLONE]"), `Cloning ${getRepoName(target)}...`);
-  }
+    // Use new remote analyzer - no cloning!
+    console.log(chalk.green("\n[ANALYZE]"), `Analyzing ${getRepoName(target)} via GitHub API...`);
+    
+    const analyzer = new RemoteAnalyzer(target, options.verbose);
+    const result = await analyzer.analyze();
 
-  // Resolve input (clone if GitHub URL)
+    if (options.verbose) {
+      console.log(chalk.gray(`  ├── Language: ${result.repo.language}`));
+      console.log(chalk.gray(`  ├── Framework: ${result.repo.framework || "None"}`));
+      console.log(chalk.gray(`  ├── License: ${result.repo.license || "Unknown"}`));
+      console.log(chalk.gray(`  └── Skills: ${result.skills.length}`));
+    }
+
+    // License check
+    console.log(chalk.green("\n[LICENSE]"), "Checking repository license...");
+    const isPermissive = result.repo.license && PERMISSIVE_LICENSES.includes(result.repo.license);
+
+    if (!isPermissive && !options.dryRun) {
+      console.log(chalk.red("\n[BLOCKED]"), "Cannot assimilate repository.");
+      if (!result.repo.license) {
+        console.log(chalk.red("  No license detected."));
+      } else {
+        console.log(chalk.red(`  License "${result.repo.license}" is not permissive.`));
+      }
+      console.log(chalk.gray("  Use --dry-run to preview without restrictions."));
+      process.exitCode = 1;
+      return;
+    }
+
+    if (isPermissive) {
+      console.log(chalk.green(`  ✓ ${result.repo.license} - permissive license`));
+    } else if (options.dryRun) {
+      console.log(chalk.yellow("  ⚠ License not permissive - generation blocked without --dry-run"));
+    }
+
+    // Output path
+    const outputPath = options.output || process.cwd();
+
+    console.log(
+      chalk.green("\n[GENERATE]"),
+      options.dryRun ? "Preview of assets..." : `Writing assets to ${outputPath}/.github/...`
+    );
+
+    // Generate
+    const generator = new Generator(outputPath, options.dryRun, options.verbose);
+    const generated = await generator.generate({
+      skills: result.skills,
+      agents: result.agents,
+      tools: result.tools,
+      hooks: result.hooks,
+      summary: result.summary,
+    });
+
+    for (const file of generated.files) {
+      const icon = options.dryRun ? chalk.yellow("○") : chalk.green("✓");
+      console.log(`  ${icon} ${file}`);
+    }
+
+    // Registry
+    const registry = new Registry(outputPath, options.dryRun);
+    await registry.build(result.skills, result.agents);
+    const registryIcon = options.dryRun ? chalk.yellow("○") : chalk.green("✓");
+    console.log(`  ${registryIcon} skills-registry.jsonl`);
+
+    // Hooks
+    if (!options.dryRun) {
+      const hookRunner = new HookRunner(outputPath, options.verbose);
+      await hookRunner.execute("post-generate");
+    }
+
+    // Summary
+    const subAgentCount = result.agents.filter(a => a.isSubAgent).length;
+    const primaryCount = result.agents.length - subAgentCount;
+    
+    console.log(
+      chalk.green("\n[COMPLETE]"),
+      `${result.skills.length} skills, ${primaryCount} agents, ${subAgentCount} sub-agents, ${result.hooks.length} hooks generated.`
+    );
+
+    if (options.dryRun) {
+      console.log(chalk.yellow("\nDry run - no files were written."));
+    } else {
+      console.log(chalk.gray("\nYour repository has been assimilated.\n"));
+    }
+
+  } else {
+    // Local path - use original flow with cloning
+    await assimilateLocal(target, options);
+  }
+}
+
+/**
+ * Original local path assimilation
+ */
+async function assimilateLocal(target: string, options: AssimilateOptions): Promise<void> {
+  const { resolveInput } = await import("../utils/git.js");
+  const { detectLicense, formatLicenseStatus } = await import("../utils/license.js");
+
   const resolved = await resolveInput(target);
 
   try {
-    if (isRemote && options.verbose) {
-      console.log(chalk.gray(`  └── Cloned to: ${resolved.path}`));
-    }
-
     console.log(chalk.green("\n[SCAN]"), "Enumerating repository...");
 
-    // Phase 1: Scan
     const scanner = new Scanner(resolved.path, options.verbose);
     const scanResult = await scanner.scan();
 
@@ -51,7 +146,6 @@ export async function assimilateCommand(
 
     console.log(chalk.green("\n[ANALYZE]"), "Copilot SDK analysis in progress...");
 
-    // Phase 2: Analyze with Copilot SDK
     const analyzer = new Analyzer(options.verbose);
     const analysisResult = await analyzer.analyze(scanResult);
 
@@ -59,55 +153,38 @@ export async function assimilateCommand(
       for (const skill of analysisResult.skills) {
         console.log(chalk.gray(`  ├── ${skill.sourceDir} → ${skill.name}`));
       }
-      for (const agent of analysisResult.agents) {
-        if (agent.isSubAgent) {
-          console.log(chalk.gray(`  ├── Sub-agent: ${agent.name}`));
-        }
-      }
     }
 
-    // Phase 2.5: License check
+    // License check
     console.log(chalk.green("\n[LICENSE]"), "Checking repository license...");
     const license = await detectLicense(resolved.path);
     
     if (options.verbose) {
-      console.log(chalk.gray(`  └── ${formatLicenseStatus(license)}${license.file ? ` (from ${license.file})` : ""}`));
+      console.log(chalk.gray(`  └── ${formatLicenseStatus(license)}`));
     }
 
-    // Block generation for non-permissive licenses (unless dry-run)
     if (!license.permissive && !options.dryRun) {
       console.log(chalk.red("\n[BLOCKED]"), "Cannot assimilate repository.");
-      
       if (!license.detected) {
         console.log(chalk.red("  No license file found."));
-        console.log(chalk.gray("  Add a LICENSE file with a permissive license (MIT, Apache-2.0, GPL, BSD, etc.)"));
       } else {
         console.log(chalk.red(`  License "${license.name}" is not permissive.`));
-        console.log(chalk.gray("  Only repositories with permissive open-source licenses can be assimilated."));
       }
-      
-      console.log(chalk.gray("\n  Tip: Use --dry-run to preview what would be generated without license restrictions."));
-      console.log(chalk.gray("  Supported licenses: MIT, Apache-2.0, GPL, LGPL, BSD, ISC, MPL-2.0, Unlicense, CC0\n"));
-      
       process.exitCode = 1;
       return;
     }
 
-    if (!license.permissive && options.dryRun) {
-      console.log(chalk.yellow("  ⚠ License not permissive - generation would be blocked without --dry-run"));
-    } else if (license.permissive) {
-      console.log(chalk.green(`  ✓ ${license.name} - permissive license detected`));
+    if (license.permissive) {
+      console.log(chalk.green(`  ✓ ${license.name} - permissive license`));
     }
 
-    // Determine output path
-    const outputPath = options.output || (isRemote ? process.cwd() : resolved.path);
+    const outputPath = options.output || resolved.path;
 
     console.log(
       chalk.green("\n[GENERATE]"),
-      options.dryRun ? "Preview of assets..." : `Writing assets to ${isRemote ? outputPath : ".github/"}...`
+      options.dryRun ? "Preview of assets..." : `Writing assets to .github/...`
     );
 
-    // Phase 3: Generate
     const generator = new Generator(outputPath, options.dryRun, options.verbose);
     const generated = await generator.generate(analysisResult);
 
@@ -116,47 +193,31 @@ export async function assimilateCommand(
       console.log(`  ${icon} ${file}`);
     }
 
-    // Phase 4: Build registry (includes both skills and agents)
     const registry = new Registry(outputPath, options.dryRun);
     await registry.build(analysisResult.skills, analysisResult.agents);
-    const registryIcon = options.dryRun ? chalk.yellow("○") : chalk.green("✓");
-    console.log(`  ${registryIcon} skills-registry.jsonl`);
+    console.log(`  ${options.dryRun ? chalk.yellow("○") : chalk.green("✓")} skills-registry.jsonl`);
 
-    // Phase 5: Execute post-generate hooks
     if (!options.dryRun) {
       const hookRunner = new HookRunner(outputPath, options.verbose);
-      const hookResults = await hookRunner.execute("post-generate");
-      
-      // Check for hook failures
-      const failedHooks = hookResults.filter(r => !r.success);
-      if (failedHooks.length > 0) {
-        console.log(chalk.yellow("\nWarning: Some hooks failed. See output above."));
-      }
+      await hookRunner.execute("post-generate");
     }
 
-    // Summary
-    const subAgentCount = analysisResult.agents.filter((a) => a.isSubAgent).length;
+    const subAgentCount = analysisResult.agents.filter(a => a.isSubAgent).length;
     const primaryCount = analysisResult.agents.length - subAgentCount;
-    const hookCount = analysisResult.hooks.length;
     
     console.log(
       chalk.green("\n[COMPLETE]"),
-      `${analysisResult.skills.length} skills, ${primaryCount} agents, ${subAgentCount} sub-agents, ${hookCount} hooks generated.`
+      `${analysisResult.skills.length} skills, ${primaryCount} agents, ${subAgentCount} sub-agents, ${analysisResult.hooks.length} hooks generated.`
     );
 
     if (options.dryRun) {
       console.log(chalk.yellow("\nDry run - no files were written."));
     } else {
-      console.log(chalk.gray("\nYour repository has been assimilated."));
-      console.log(chalk.white("The agent now embodies this codebase.\n"));
+      console.log(chalk.gray("\nYour repository has been assimilated.\n"));
     }
   } finally {
-    // Clean up temporary clone
     if (resolved.isTemporary) {
       await resolved.cleanup();
-      if (options.verbose) {
-        console.log(chalk.gray("Cleaned up temporary clone."));
-      }
     }
   }
 }
