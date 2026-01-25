@@ -80,7 +80,7 @@ export class RemoteAnalyzer {
                 console.log("  [SDK] Client started, creating session...");
             }
             const session = await client.createSession({
-                model: "gpt-5.2",
+                model: "gpt-5",
                 streaming: true,
                 systemMessage: {
                     content: this.getSystemPrompt(),

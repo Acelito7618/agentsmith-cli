@@ -4,7 +4,7 @@
 
 name: pre-commit-quality
 event: pre-commit
-description: Run linting and type checking before commit
+description: Run linting before commit
 
 # Commands to execute
 commands:

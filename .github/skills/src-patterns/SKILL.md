@@ -1,11 +1,11 @@
 ---
 name: src-patterns
-description: Patterns and conventions from the src directory
+description: Patterns from the src directory
 ---
 
 # Src Patterns
 
-Patterns and conventions from the src directory
+Patterns from the src directory
 
 ## When to Use
 

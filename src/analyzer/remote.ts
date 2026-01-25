@@ -146,7 +146,7 @@ export class RemoteAnalyzer {
       }
 
       const session = await client.createSession({
-        model: "gpt-5.2",
+        model: "gpt-5",
         streaming: true,
         systemMessage: {
           content: this.getSystemPrompt(),
