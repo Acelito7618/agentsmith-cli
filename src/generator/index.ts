@@ -83,8 +83,8 @@ export class Generator {
       : "See source files in the repository for examples.";
 
     return `---
-name: ${skill.name}
-description: ${skill.description}
+name: ${this.quoteYamlValue(skill.name)}
+description: ${this.quoteYamlValue(skill.description)}
 ---
 
 # ${this.toTitleCase(skill.name)}
@@ -110,6 +110,19 @@ ${examples}
 
 **${skill.category}** - ${this.getCategoryDescription(skill.category)}
 `;
+  }
+
+  /**
+   * Quote a YAML value if it contains special characters
+   */
+  private quoteYamlValue(value: string): string {
+    // Quote if contains: colon followed by space, leading/trailing whitespace, 
+    // or special YAML characters
+    if (/[:#{}[\]&*?|>!%@`]/.test(value) || value.startsWith("'") || value.startsWith('"')) {
+      // Escape internal double quotes and wrap in double quotes
+      return `"${value.replace(/"/g, '\\"')}"`;
+    }
+    return value;
   }
 
   private getCategoryDescription(category: string): string {
@@ -172,7 +185,7 @@ ${examples}
 # "The best thing about being me... there are so many of me."
 
 name: ${agent.name}
-description: ${agent.description}
+description: ${this.quoteYamlValue(agent.description)}
 version: "1.0"
 
 # Skills this agent can use
