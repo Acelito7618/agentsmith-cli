@@ -1,0 +1,1 @@
+{"version":3,"file":"assimilate.d.ts","sourceRoot":"","sources":["../../src/commands/assimilate.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAWH,UAAU,iBAAiB;IACzB,MAAM,CAAC,EAAE,OAAO,CAAC;IACjB,OAAO,CAAC,EAAE,OAAO,CAAC;IAClB,MAAM,CAAC,EAAE,MAAM,CAAC;CACjB;AAQD,wBAAsB,iBAAiB,CACrC,MAAM,EAAE,MAAM,EACd,OAAO,EAAE,iBAAiB,GACzB,OAAO,CAAC,IAAI,CAAC,CA6Ff"}

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "prepare": "npm run build",
+    "prepublishOnly": "npm run build",
     "dev": "tsx src/main.ts",
     "start": "node dist/main.js",
     "lint": "eslint src/",
