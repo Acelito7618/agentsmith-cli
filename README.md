@@ -33,10 +33,29 @@
 
 ## Installation
 
-### From GitHub (recommended during preview)
+### Quick Install (recommended)
 
 ```bash
-npm install -g github:shyamsridhar123/agentsmith-cli
+# Install as a project dependency
+npm install github:shyamsridhar123/agentsmith-cli
+
+# Run with npx
+npx agentsmith --help
+```
+
+### Global Install
+
+```bash
+# Clone and install globally
+git clone https://github.com/shyamsridhar123/agentsmith-cli.git
+cd agentsmith-cli
+npm install
+npm run build
+npm install -g .
+
+# Or install globally from tarball (works better on Windows)
+npm pack
+npm install -g ./agentsmith-0.2.0.tgz
 ```
 
 ### Uninstall
@@ -52,12 +71,6 @@ rm -rf .github/skills .github/agents .github/hooks skills-registry.jsonl
 
 ```bash
 npm install -g agentsmith
-```
-
-Or run directly:
-
-```bash
-npx agentsmith assimilate .
 ```
 
 ## Quick Start

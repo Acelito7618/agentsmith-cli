@@ -22,3 +22,4 @@ test-output/
 test-final/
 test-express/
 test-dryrun/
+*.tgz
